@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: discgolf-app
+    env: python
+    buildCommand: ""
+    startCommand: "python app.py"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
