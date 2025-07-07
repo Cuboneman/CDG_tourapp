@@ -1,1 +1,72 @@
 
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <title>Discgolf Tour</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-green-50 min-h-screen text-gray-800 font-sans">
+    <div class="container mx-auto p-6">
+      <h1 class="text-4xl font-bold mb-6 text-green-700 text-center">Discgolf Tour</h1>
+      <h2 class="text-2xl font-semibold mb-4 text-green-600">Spelare</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {% for player in players %}
+          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-green-500">
+            <h3 class="text-lg font-bold">{{ player[1] }}</h3>
+            <p>Poäng: <span class="font-semibold">{{ player[3] }}</span></p>
+            <p>HCP: {{ player[2] }}</p>
+            <p>C2: {{ player[4] }} | CTP: {{ player[5] }} | ACE: {{ player[6] }}</p>
+          </div>
+        {% endfor %}
+      </div>
+      <h2 class="text-2xl font-semibold mb-4 text-green-600">Lägg till runda</h2>
+      <form method="post" class="bg-white p-6 rounded-xl shadow mb-10 space-y-4">
+        {% for player in players %}
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+            <label class="font-medium">{{ player[1] }}</label>
+            <input type="number" name="{{ player[1] }}" placeholder="Score" required class="border rounded px-2 py-1">
+            <div class="flex gap-4 items-center">
+              <label class="flex items-center gap-1">
+                C2: <input type="number" name="c2_{{ player[1] }}" value="0" class="w-16 border rounded px-1 py-0.5">
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="ctp_{{ player[1] }}"> CTP
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="ace_{{ player[1] }}" value="1"> ACE
+              </label>
+            </div>
+          </div>
+        {% endfor %}
+        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Spara runda
+        </button>
+      </form>
+      <h2 class="text-2xl font-semibold mb-4 text-green-600">Rundor</h2>
+      <div class="space-y-6">
+        {% for round in rounds %}
+          <div class="bg-white rounded-xl shadow p-4 border-l-4 border-orange-500">
+            <h3 class="text-xl font-bold mb-2">Runda {{ loop.index }}</h3>
+            <ul class="space-y-1 mb-3">
+              {% for row in round.scores %}
+                <li>
+                  <span class="font-medium">{{ row[-1] }}</span>:
+                  Rå: {{ row[3] }}, Just: {{ row[4] }},
+                  Placering: {{ row[5] }},
+                  C2: {{ row[7] }},
+                  CTP: {{ 'Ja' if row[8] else 'Nej' }},
+                  ACE: {{ 'Ja' if row[9] else 'Nej' }}
+                </li>
+              {% endfor %}
+            </ul>
+            <div class="flex gap-4">
+              <a href="{{ url_for('edit_round', round_id=round.id) }}" class="text-blue-600 hover:underline">✏️ Redigera</a>
+              <a href="{{ url_for('delete_round', round_id=round.id) }}" onclick="return confirm('Ta bort rundan?');" class="text-red-600 hover:underline">🗑️ Ta bort</a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </body>
+</html>
