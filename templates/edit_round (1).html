@@ -1,0 +1,38 @@
+
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <title>Redigera runda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 p-6 text-gray-800">
+    <div class="max-w-2xl mx-auto">
+      <h1 class="text-3xl font-bold text-center mb-6">Redigera runda #{{ round_id }}</h1>
+
+      <form method="post" class="bg-white p-6 rounded shadow space-y-4">
+        {% for score in scores %}
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+          <div><strong>{{ score.player_name }}</strong></div>
+          <input type="number" name="raw_{{ score.player_id }}" value="{{ score.raw_score }}" class="border rounded px-2 py-1 w-full">
+          <input type="number" name="c2_{{ score.player_id }}" value="{{ score.c2 }}" class="border rounded px-2 py-1 w-full">
+          <label class="flex items-center">
+            <input type="checkbox" name="ctp_{{ score.player_id }}" {% if score.ctp %}checked{% endif %}>
+            <span class="ml-2">CTP</span>
+          </label>
+          <label class="flex items-center">
+            <input type="checkbox" name="ace_{{ score.player_id }}" {% if score.ace %}checked{% endif %}>
+            <span class="ml-2">ACE</span>
+          </label>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Spara ändringar
+        </button>
+      </form>
+
+      <a href="{{ url_for('index') }}" class="block text-center mt-6 text-blue-600 hover:underline">← Tillbaka</a>
+    </div>
+  </body>
+</html>
