@@ -33,7 +33,33 @@
 
     <hr class="my-6">
 
-    <h2 class="text-2xl font-bold mt-6">Tidigare rundor</h2>
+    <h2 class="text-2xl font-bold mt-6">Statistik</h2>
+    <table class="w-full mt-2 text-left border">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="p-2">Spelare</th>
+          <th class="p-2">HCP</th>
+          <th class="p-2">Poäng</th>
+          <th class="p-2">C2</th>
+          <th class="p-2">CTP</th>
+          <th class="p-2">ACE</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for player in players %}
+        <tr class="border-t">
+          <td class="p-2">{{ player[1] }}</td>
+          <td class="p-2">{{ player[2] }}</td>
+          <td class="p-2">{{ player[3] }}</td>
+          <td class="p-2">{{ player[4] }}</td>
+          <td class="p-2">{{ player[5] }}</td>
+          <td class="p-2">{{ player[6] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 class="text-2xl font-bold mt-8">Tidigare rundor</h2>
     {% for round in rounds %}
     <div class="mt-4 border p-4 bg-white shadow rounded">
       <div class="flex justify-between">
