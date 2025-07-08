@@ -81,15 +81,6 @@ def setup():
             players = cur.fetchall()
     return render_template("setup.html", players=players)
 
-@app.route('/delete_round/<int:round_id>')
-def delete_round(round_id):
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM round_scores WHERE round_id = %s", (round_id,))
-            cur.execute("DELETE FROM rounds WHERE id = %s", (round_id,))
-        conn.commit()
-    return redirect(url_for('index'))
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     init_db()
@@ -187,6 +178,15 @@ def edit_round(round_id):
             "ace": row[9]
         })
     return render_template("edit_round.html", round_id=round_id, scores=players)
+
+@app.route('/delete_round/<int:round_id>')
+def delete_round(round_id):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM round_scores WHERE round_id = %s", (round_id,))
+            cur.execute("DELETE FROM rounds WHERE id = %s", (round_id,))
+        conn.commit()
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
