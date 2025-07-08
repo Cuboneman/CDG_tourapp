@@ -10,48 +10,14 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 def get_db():
     return psycopg2.connect(DATABASE_URL, sslmode='require')
 
-def init_db():
-    schema = """
-    CREATE TABLE IF NOT EXISTS tours (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS players (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        handicap INTEGER NOT NULL DEFAULT 0,
-        points INTEGER NOT NULL DEFAULT 0,
-        total_c2 INTEGER NOT NULL DEFAULT 0,
-        total_ctp INTEGER NOT NULL DEFAULT 0,
-        total_ace INTEGER NOT NULL DEFAULT 0,
-        tour_id INTEGER REFERENCES tours(id)
-    );
-    CREATE TABLE IF NOT EXISTS rounds (
-        id SERIAL PRIMARY KEY,
-        tour_id INTEGER REFERENCES tours(id)
-    );
-    CREATE TABLE IF NOT EXISTS round_scores (
-        id SERIAL PRIMARY KEY,
-        round_id INTEGER REFERENCES rounds(id),
-        player_id INTEGER REFERENCES players(id),
-        raw_score INTEGER,
-        adjusted_score INTEGER,
-        placement INTEGER,
-        handicap_used INTEGER,
-        c2 INTEGER DEFAULT 0,
-        ctp BOOLEAN DEFAULT FALSE,
-        ace BOOLEAN DEFAULT FALSE
-    );
-    """
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute(schema)
-        conn.commit()
+def to_int(val):
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return 0
 
 @app.route('/select_tour', methods=['GET', 'POST'])
 def select_tour():
-    init_db()
     with get_db() as conn:
         with conn.cursor() as cur:
             if request.method == 'POST':
@@ -73,7 +39,7 @@ def setup():
         with conn.cursor() as cur:
             if request.method == 'POST':
                 name = request.form['player_name']
-                hcp = int(request.form['handicap'])
+                hcp = to_int(request.form['handicap'])
                 cur.execute("INSERT INTO players (name, handicap, tour_id) VALUES (%s, %s, %s)", (name, hcp, tour_id))
                 conn.commit()
 
@@ -83,7 +49,6 @@ def setup():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    init_db()
     tour_id = session.get('tour_id')
     if not tour_id:
         return redirect(url_for("select_tour"))
@@ -99,8 +64,8 @@ def index():
 
         scores = {}
         for pid, name, hcap, *_ in players:
-            score = int(request.form[name])
-            c2 = int(request.form.get(f'c2_{name}', 0))
+            score = to_int(request.form.get(name))
+            c2 = to_int(request.form.get(f'c2_{name}'))
             ctp = f'ctp_{name}' in request.form
             ace = f'ace_{name}' in request.form
             scores[name] = {
@@ -121,6 +86,26 @@ def index():
                 "INSERT INTO round_scores (round_id, player_id, raw_score, adjusted_score, placement, handicap_used, c2, ctp, ace) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (round_id, info['id'], info['raw'], adjusted[name], place, info['handicap'], info['c2'], info['ctp'], info['ace'])
             )
+
+        cur.execute("""
+            UPDATE players
+            SET points = points + CASE
+                WHEN s.placement = 1 THEN 3
+                WHEN s.placement = 2 THEN 2
+                WHEN s.placement = 3 THEN 1
+                ELSE 0
+            END,
+            handicap = handicap + CASE
+                WHEN s.placement = 1 THEN -1
+                WHEN s.placement = 3 THEN 1
+                ELSE 0
+            END,
+            total_c2 = total_c2 + s.c2,
+            total_ctp = total_ctp + CASE WHEN s.ctp THEN 1 ELSE 0 END,
+            total_ace = total_ace + CASE WHEN s.ace THEN 1 ELSE 0 END
+            FROM round_scores s
+            WHERE s.round_id = %s AND players.id = s.player_id
+        """, (round_id,))
         conn.commit()
         return redirect(url_for('index'))
 
@@ -137,47 +122,6 @@ def index():
         rounds.append({'id': rid, 'scores': scores})
 
     return render_template('index.html', players=players, rounds=rounds)
-
-@app.route('/edit_round/<int:round_id>', methods=['GET', 'POST'])
-def edit_round(round_id):
-    conn = get_db()
-    cur = conn.cursor()
-
-    if request.method == 'POST':
-        cur.execute("SELECT player_id, handicap_used FROM round_scores WHERE round_id = %s", (round_id,))
-        players = cur.fetchall()
-
-        cur.execute("DELETE FROM round_scores WHERE round_id = %s", (round_id,))
-        for pid, hcp in players:
-            raw = int(request.form.get(f"raw_{pid}", 0))
-            c2 = int(request.form.get(f"c2_{pid}", 0))
-            ctp = f"ctp_{pid}" in request.form
-            ace = f"ace_{pid}" in request.form
-            adj = raw - hcp
-            cur.execute(
-                "INSERT INTO round_scores (round_id, player_id, raw_score, adjusted_score, handicap_used, c2, ctp, ace) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (round_id, pid, raw, adj, hcp, c2, ctp, ace)
-            )
-        cur.execute("SELECT id, adjusted_score FROM round_scores WHERE round_id = %s", (round_id,))
-        results = sorted(cur.fetchall(), key=lambda x: x[1])
-        for i, (rid, _) in enumerate(results):
-            cur.execute("UPDATE round_scores SET placement = %s WHERE id = %s", (i+1, rid))
-        conn.commit()
-        return redirect(url_for("index"))
-
-    cur.execute("SELECT r.*, p.name as player_name FROM round_scores r JOIN players p ON r.player_id = p.id WHERE round_id = %s", (round_id,))
-    scores = cur.fetchall()
-    players = []
-    for row in scores:
-        players.append({
-            "player_id": row[2],
-            "player_name": row[-1],
-            "raw_score": row[3],
-            "c2": row[7],
-            "ctp": row[8],
-            "ace": row[9]
-        })
-    return render_template("edit_round.html", round_id=round_id, scores=players)
 
 @app.route('/delete_round/<int:round_id>')
 def delete_round(round_id):
